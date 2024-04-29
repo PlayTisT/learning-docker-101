@@ -6,3 +6,4 @@ Learning 101
 try to use redis offial image create container and it will has log as image below
 
 ![alt text](redis.PNG)
+![alt text](redis2.PNG)
