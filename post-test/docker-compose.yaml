@@ -21,7 +21,7 @@ services:
       POSTGRES_PASSWORD: postgres1
       POSTGRES_DB: postgres1
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "postgres1"]
+      test: ["CMD-SHELL", "pg_isready", "-d", "postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -38,7 +38,7 @@ services:
       POSTGRES_PASSWORD: postgres2
       POSTGRES_DB: postgres2
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "postgres2"]
+      test: ["CMD-SHELL", "pg_isready", "-d", "postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -46,18 +46,23 @@ services:
 
   backend1:
     image: backend1:1.0
+    container_name: backend1
+    environment:
+      NODE_TLS_REJECT_UNAUTHORIZED: 0
+      DB1_HOST: db_01
+      DB1_NAME: postgres1
+      DB1_USER: postgres1
+      DB1_PASSWORD: postgres1
+      #DB2_HOST: db_02
+      #DB2_NAME: postgres2
+      #DB2_USER: postgres2
+      #DB2_PASSWORD: postgres2
+      THIRD_PARTY_SERVICE: https://mock_api:8090/users
     build: 
       context: backend1
       dockerfile: Dockerfile
-    container_name: backend1
     ports:
       - 3000:3000
-    environment:
-      NODE_TLS_REJECT_UNAUTHORIZED: 0
-      DB_HOST: db_01
-      DB_NAME: postgres1
-      DB_USER: postgres1
-      DB_PASSWORD: postgres1
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
       interval: 5s
@@ -67,21 +72,27 @@ services:
     depends_on:
       db_01:
         condition: service_healthy
+      db_02:
+        condition: service_healthy
 
   backend2:
     image: backend2:1.0
-    build: 
-      context: backend2
-      dockerfile: Dockerfile
     container_name: backend2
-    ports:
-      - 4000:4000
     environment:
-      NODE_TLS_REJECT_UNAUTHORIZED: 0
+      #NODE_TLS_REJECT_UNAUTHORIZED: 0
+      DB_HOST: db_01
+      DB_NAME: postgres1
+      DB_USER: postgres1
+      DB_PASSWORD: postgres1
       DB_HOST: db_02
       DB_NAME: postgres2
       DB_USER: postgres2
       DB_PASSWORD: postgres2
+    build: 
+      context: backend2
+      dockerfile: Dockerfile
+    ports:
+      - 3001:3001
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:4000 || exit 1
       interval: 5s
@@ -89,12 +100,13 @@ services:
       retries: 5
       start_period: 5s
     depends_on:
+      db_01:
+        condition: service_healthy
       db_02:
         condition: service_healthy
 
-
   backend_test:
-    image: backend-test:1.0
+    image: backend-test
     build: 
       context: backend-testing
       dockerfile: Dockerfile
@@ -109,7 +121,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - 2525:2525
-      #- 8090:8090
+      - 8090:8090
       #- 8091:8091
     command: --configfile /imposters/imposters.ejs --allowInjection
     volumes:
